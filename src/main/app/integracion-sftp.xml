@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+    <flow name="integracion-sftpFlow">
+        <sftp:inbound-endpoint host="ec2-34-238-43-35.compute-1.amazonaws.com" port="22" path="/uploads/source" user="mule" password="mule1234" responseTimeout="10000" doc:name="SFTP">
+            <file:filename-regex-filter pattern="^.*\.xls.*$" caseSensitive="false"/>
+        </sftp:inbound-endpoint>
+        <logger message="Iniciando descarga de archivos" level="INFO" doc:name="Logger"/>
+        <choice doc:name="Choice">
+            <when expression="#[message.inboundProperties.originalFilename.toLowerCase().contains(&quot;rdr&quot;)]">
+                <logger message="Archivo de RDR #[message.inboundProperties.originalFilename]" level="INFO" doc:name="Archivo RDR"/>
+                <file:outbound-endpoint path="/home/lubuntu/Documents/Integracion/Mule/Source/rdr/" outputPattern="#[message.inboundProperties.originalFilename]" responseTimeout="10000" doc:name="File"/>
+                <scripting:component doc:name="Python">
+                    <scripting:script engine="jython" file="/home/lubuntu/Documents/Integracion/Mule/python/reporte_rdr.py">
+                        <property key="fileName" value="#[message.inboundProperties.originalFilename]"/>
+                    </scripting:script>
+                </scripting:component>
+            </when>
+            <when expression="#[message.inboundProperties.originalFilename.toLowerCase().contains(&quot;crecimiento&quot;)]">
+                <logger message="Archivo de Crecimiento #[message.inboundProperties.originalFilename]" level="INFO" doc:name="Archivo Crecimiento"/>
+                <file:outbound-endpoint path="/home/lubuntu/Documents/Integracion/Mule/Source/crecimiento" outputPattern="#[message.inboundProperties.originalFilename]" responseTimeout="10000" doc:name="File"/>
+                <scripting:component doc:name="Python">
+                    <scripting:script engine="jython" file="/home/lubuntu/Documents/Integracion/Mule/python/reporte_crecimiento.py">
+                        <property key="fileName" value="#[message.inboundProperties.originalFilename]"/>
+                    </scripting:script>
+                </scripting:component>
+            </when>
+            <when expression="#[message.inboundProperties.originalFilename.toLowerCase().contains(&quot;tendencial&quot;)]">
+                <logger message="Archivo Tendencial #[message.inboundProperties.originalFilename]" level="INFO" doc:name="Archivo Tendencial"/>
+                <file:outbound-endpoint path="/home/lubuntu/Documents/Integracion/Mule/Source/tendencial" outputPattern="#[message.inboundProperties.originalFilename]" responseTimeout="10000" doc:name="File"/>
+                <scripting:component doc:name="Python">
+                    <scripting:script engine="jython" file="/home/lubuntu/Documents/Integracion/Mule/python/reporte_tendencial.py">
+                        <property key="fileName" value="#[message.inboundProperties.originalFilename]"/>
+                    </scripting:script>
+                </scripting:component>
+            </when>
+            <otherwise>
+                <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+        <logger level="INFO" doc:name="Logger"/>
+    </flow>
+</mule>
